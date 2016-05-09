@@ -9,8 +9,10 @@ After training the data we get user_factors(W) and item_factors(H)
 """
 
 import numpy as np
-from math import log,exp
+from math import log, exp
 import random
+from getdata import DataMode
+import pylab as pl
 
 
 class BPRArgs(object):
@@ -28,9 +30,10 @@ class BPRArgs(object):
         self.negative_item_regularization = negative_item_regularization
         self.update_negative_item_factors = update_negative_item_factors
 
+
 class BPR(object):
 
-    def __init__(self, D, args):
+    def __init__(self, D, args, test_data):
         """initialise BPR matrix factorization model
         D: number of factors(10)
         args: parameter table
@@ -42,6 +45,16 @@ class BPR(object):
         self.positive_item_regularization = args.positive_item_regularization
         self.negative_item_regularization = args.negative_item_regularization
         self.update_negative_item_factors = args.update_negative_item_factors
+        self.iter_num_x = []
+        self.ranking_loss_y = []
+        self.test_data = test_data
+        self.data = None
+        self.num_items = None
+        self.num_users = None
+        self.user_factors = None
+        self.item_bias = None
+        self.item_factors = None
+        self.loss_samples = None
 
     def train(self, data, sampler, num_iters):
         """train model
@@ -50,23 +63,23 @@ class BPR(object):
               here convergence is replaced by iteration number limit(10)
         """
         self.init(data)
-
         print 'initial loss = {0}'.format(self.loss())
-        """num_iters is set as 10"""
 
         # TODO: Update factors(W and H) and show negative BPR-OPT during each iteration
         # Show negative BPR-OPT to make sure that we are minimizing it
         for it in xrange(num_iters):
+            self.iter_num_x.append(it)
             print 'starting iteration {0}'.format(it)
             for u, i, j in sampler.generate_samples(self.data):
                 self.update_factors(u, i, j)
             print 'iteration {0}: loss = {1}'.format(it, self.loss())
+            self.ranking_loss_y.append(self.loss())
 
     def init(self, data):
         self.data = data
         # data is csr matrix
         self.num_users, self.num_items = self.data.shape
-        # item_bias is an one-dimension array, its length = num_items, all elements are 0.
+        # item_bias is an one-dimension array, its length = num_items, all elements are initialized as 0.
         self.item_bias = np.zeros(self.num_items)
         # user_factors is self.num_users-by-self.D array of random numbers from [0.0, 1.0)
         # it equals the W(factor matrix of users) in the paper
@@ -75,20 +88,24 @@ class BPR(object):
         # item_factors is self.num_items-by-self.D array of random numbers from [0.0, 1.0)
         # it equals the H(factor matrix of items) in the paper
         # TODO: initialise the item factor matrix H with random values between 0 and 1
-        self.item_factors = np.random.random_sample((self.num_items,self.D))
+        self.item_factors = np.random.random_sample((self.num_items, self.D))
         self.create_loss_samples()
 
     def create_loss_samples(self):
         # apply rule of thumb to decide num samples over which to compute loss
         num_loss_samples = int(100*self.num_users**0.5)
+        # TODO: sample num_loss_samples(the number of triples) triples with the first sampler
         print 'sampling {0} <user,item i,item j> triples...'.format(num_loss_samples)
         # construct a sampler object(sampler)
         sampler = UniformUserUniformItem(True)
         """TODO:compare num_loss_samples with data.nnz in num_samples
-        loss_samples is DS
-        generate a list of triples(u,i,j)
+        DS has data.nnz(a number) triples
+        The sampler sample some triples from DS
+        generate a list of triples(u,i,j) called loss_samples
+        loss_samples is some part of DS
+        The number of samples is the smaller one of num_loss_samples and data.nnz
         """
-        self.loss_samples = [t for t in sampler.generate_samples(data, num_loss_samples)]
+        self.loss_samples = [t for t in sampler.generate_samples(self.data, num_loss_samples)]
 
     def update_factors(self, u, i, j, update_u=True, update_i=True):
         """apply SGD update"""
@@ -97,30 +114,30 @@ class BPR(object):
         # item_bias is initialised zeros
         x = self.item_bias[i] - self.item_bias[j] \
             + np.dot(self.user_factors[u, :], self.item_factors[i, :]-self.item_factors[j, :])
+        temp_u_factors = self.user_factors[u]
 
-        z = 1.0/(1.0+exp(x))
+        z = 1.0 / (1.0 + exp(x))
         if update_i:
-            d = z - self.bias_regularization * self.item_bias[i]
-
+            d = -self.bias_regularization * self.item_bias[i] + z
             self.item_bias[i] += self.learning_rate * d
         if update_j:
-            d = -z - self.bias_regularization * self.item_bias[j]
+            d = -self.bias_regularization * self.item_bias[j] - z
             self.item_bias[j] += self.learning_rate * d
         if update_u:
-            d = (self.item_factors[i, :]-self.item_factors[j, :])*z - self.user_regularization*self.user_factors[u, :]
+            d = -self.user_regularization * self.user_factors[u, :] + (self.item_factors[i, :]-self.item_factors[j, :])*z
             self.user_factors[u, :] += self.learning_rate*d
         if update_i:
-            d = self.user_factors[u, :]*z - self.positive_item_regularization*self.item_factors[i, :]
+            d = -self.positive_item_regularization * self.item_factors[i, :] + temp_u_factors * z
             self.item_factors[i, :] += self.learning_rate*d
         if update_j:
-            d = -self.user_factors[u, :]*z - self.negative_item_regularization*self.item_factors[j, :]
+            d = -self.negative_item_regularization*self.item_factors[j, :] - temp_u_factors * z
             self.item_factors[j, :] += self.learning_rate*d
 
     def loss(self):
         ranking_loss = 0
         for u, i, j in self.loss_samples:
             x = self.predict(u, i) - self.predict(u, j)
-            ranking_loss += 1.0 / (1.0 + exp(x))
+            ranking_loss += 1.0 / (1.0 + exp(-x))
         complexity = 0
         for u, i, j in self.loss_samples:
             complexity += self.user_regularization * np.dot(self.user_factors[u], self.user_factors[u])
@@ -128,11 +145,34 @@ class BPR(object):
             complexity += self.negative_item_regularization * np.dot(self.item_factors[j], self.item_factors[j])
             complexity += self.bias_regularization * self.item_bias[i]**2
             complexity += self.bias_regularization * self.item_bias[j]**2
-        return -log(ranking_loss) + 0.5*complexity
+        return -log(ranking_loss) + complexity
         # return negative BPR-OPT( 0.5 is not necessary)
 
     def predict(self, u, i):
         return self.item_bias[i] + np.dot(self.user_factors[u], self.item_factors[i])
+
+    def plot_figure(self):
+        pl.plot(self.iter_num_x, self.ranking_loss_y, 'o')
+        pl.show()
+
+    def calculate_auc(self):
+        event_sum = 0
+        for piece in self.test_data:
+            event_id = piece[0]
+            user_id = piece[1]
+            index = self.data[event_id].indices
+            positive_user_list = list(index)
+            positive_user_list.append(user_id)
+            negative_user_list = list(set(range(self.num_items)) - set(positive_user_list))
+            u_sum = 0
+            for j in negative_user_list:
+                x_u_i = np.dot(self.user_factors[event_id], self.item_factors[user_id]) + self.item_bias[user_id]
+                x_u_j = np.dot(self.user_factors[event_id], self.item_factors[j]) + self.item_bias[j]
+                if x_u_i > x_u_j:
+                    u_sum += 1.0
+            event_sum += u_sum/(len(negative_user_list))
+        auc = event_sum/(len(self.test_data))
+        return auc
 
 
 # sampling strategies
@@ -198,43 +238,6 @@ class UniformUserUniformItem(Sampler):
             yield u, i, j
 
 
-# TODO: sample user and item separately without repeating
-class UniformUserUniformItemWithoutReplacement(Sampler):
-
-    def generate_samples(self, data, max_samples=None):
-        self.init(self, data, max_samples)
-
-        # make a local copy of data as we're going to "forget" some entries
-        self.local_data = self.data.copy()
-
-        for _ in xrange(self.num_samples(self.data.nnz)):
-            u = self.uniform_user()
-            # sample positive item without replacement if we can
-            user_items = self.local_data[u].nonzero()[1]
-            if len(user_items) == 0:
-                # reset user data if it's all been sampled
-                for ix in self.local_data[u].indices:
-                    self.local_data[u, ix] = self.data[u, ix]
-                user_items = self.local_data[u].nonzero()[1]
-            i = random.choice(user_items)
-            # forget this item so we don't sample it again for the same user
-            self.local_data[u, i] = 0
-            j = self.sample_negative_item(user_items)
-            yield u, i, j
-
-
-# TODO: sample user and item by pair (they are corresponding)
-class UniformPair(Sampler):
-    def generate_samples(self, data, max_samples=None):
-        self.init(data, max_samples)
-        for _ in xrange(self.num_samples(self.data.nnz)):
-            idx = random.randint(0, self.data.nnz-1)
-            u = self.users[self.idx]
-            i = self.items[self.idx]
-            j = self.sample_negative_item(self.data[u].indices)
-            yield u, i, j
-
-
 # idxs make it sure that there is not any repeating
 class UniformPairWithoutReplacement(Sampler):
     def generate_samples(self, data, max_samples=None):
@@ -255,53 +258,21 @@ class UniformPairWithoutReplacement(Sampler):
             self.idx += 1
             yield u, i, j
 
-
-class ExternalSchedule(Sampler):
-    def __init__(self, filepath, index_offset=0):
-        self.filepath = filepath
-        self.index_offset = index_offset
-
-    def generate_samples(self, data, max_samples=None):
-        self.init(data, max_samples)
-        f = open(self.filepath)
-        samples = [map(int, line.strip().split()) for line in f]
-        random.shuffle(samples)  # important!
-        num_samples = self.num_samples(len(samples))
-        for u, i, j in samples[:num_samples]:
-            yield u-self.index_offset, i-self.index_offset, j-self.index_offset
-
 if __name__ == '__main__':
-    # import sys
-    # from scipy.io import mmread
-    # data = mmread(sys.argv[1]).tocsr()
-
-    # TODO: generate data
-    from scipy.sparse import coo_matrix
-    from numpy import array
-    l = []
-    for i in xrange(1000):
-        l.append(random.randint(0, 99))
-    row = array(l)
-    l = []
-    for i in xrange(1000):
-        l.append(random.randint(0, 99))
-    column = array(l)
-    l = []
-    for _ in xrange(1000):
-        l.append(random.randint(0, 1))
-    d = array(l)
-    da = coo_matrix((d, (row, column)), shape=(100, 100))
-    data = da.tocsr()
+    d = DataMode()
+    d.find_data()
+    csr_data = d.find_train_data()
+    test_data = d.find_test_data()
     args = BPRArgs()
-    args.learning_rate = 0.2
+    args.learning_rate = 0.01
+    num_factors = 20
 
-    num_factors = 10
-    model = BPR(num_factors, args)
+    model = BPR(num_factors, args, test_data)
 
     sample_negative_items_empirically = True
-    # Change to another sample strategy
     sampler = UniformPairWithoutReplacement(sample_negative_items_empirically)
-    # sampler = UniformUserUniformItemWithoutReplacement(sample_negative_items_empirically)
 
-    num_iters = 7
-    model.train(data, sampler, num_iters)
+    iter_num = 0
+    model.train(csr_data, sampler, iter_num)
+    print model.calculate_auc()
+    model.plot_figure()
