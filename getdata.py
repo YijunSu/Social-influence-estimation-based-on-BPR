@@ -17,10 +17,9 @@ class DataMode(object):
 
     def generate_file(self):
         # TODO: get data from mysql server and store the data in local files
-        con = mdb.connect(host='10.109.247.132', port=3306, user='root', passwd='abc123', db='douban')
+        con = mdb.connect(host, port, user, passwd, db)
         cur = con.cursor()
-        sql = """SELECT user_id,event_id,flag
-        FROM user_event_bak
+        sql = """
         """
         cur.execute(sql)
         self.data = list(cur)
