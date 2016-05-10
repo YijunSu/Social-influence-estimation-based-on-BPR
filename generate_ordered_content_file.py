@@ -57,7 +57,7 @@ class ContentFileGenerator(object):
 
     def generate_all_event_list(self):
         # TODO: get all_event list from mysql server
-        con = mdb.connect(host='10.109.247.132', port=3306, user='root', passwd='abc123', db='douban')
+        con = mdb.connect(host, port, user, passwd, db)
         cur = con.cursor()
         sql = """SELECT id
         FROM event_list_new
