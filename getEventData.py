@@ -8,10 +8,9 @@ class GenerateFile(object):
 
     def get_data_from_sql(self):
         # TODO: get data we need from mysql server
-        con = mdb.connect(host='10.109.247.132', port=3306, user='root', passwd='abc123', db='douban')
+        con = mdb.connect(host, port, user, passwd, db)
         cur = con.cursor()
-        sql = """SELECT id,category,geo,owner_id
-        FROM event_list_new
+        sql = """
         """
         cur.execute(sql)
         self.event_info = list(cur)
