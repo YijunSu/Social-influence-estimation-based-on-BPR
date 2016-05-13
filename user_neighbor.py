@@ -5,10 +5,13 @@ import numpy as np
 
 
 class UserNeighbor(object):
-    def __init__(self, cluster_num, top_n):
+    def __init__(self, cluster_num, top_n, n_limit):
         self.cluster_num = cluster_num
         self.top_n = top_n
+        self.neighbor_num_limit = n_limit
         self.users_neighbors = {}
+        # users_neighbors is a dict, its key is v_user_id, its value is a list
+        # the list show shows the neighbor of the user and the element of the list is v_user_id
         self.organizer_set = set()
         self.category_set = set()
         self.category_count_dict = {}
@@ -276,12 +279,21 @@ class UserNeighbor(object):
         self.find_neighbor_on_org()
         print 'integrating 3 kinds of neighbors……'
         for user in list(self.t_user_id_set):
-            self.users_neighbors[user] = (self.neighbor_on_reg[user] & self.neighbor_on_cat[user]) | \
+            # t_user_id_v_user_id_dict is is a dict, t_user_id(key, string type) and v_user_id(value, int type)
+            temp_user_set = (self.neighbor_on_reg[user] & self.neighbor_on_cat[user]) | \
                                          (self.neighbor_on_reg[user] & self.neighbor_on_org[user]) | \
                                          (self.neighbor_on_org[user] & self.neighbor_on_cat[user])
+            self.users_neighbors[self.t_user_id_v_user_id_dict[user]] = []
+            counter = 0
+            for item in temp_user_set:
+                if counter < self.neighbor_num_limit:
+                    self.users_neighbors[self.t_user_id_v_user_id_dict[user]].append(self.t_user_id_v_user_id_dict[item])
+                    counter += 1
+        return self.users_neighbors
 
 if __name__ == '__main__':
     cluster_limit_num = 20
     neighbor_top_n = 100
-    neighbor_model = UserNeighbor(cluster_limit_num, neighbor_top_n)
-    neighbor_model.generate_users_neighbors()
+    neighbor_limit = 10
+    neighbor_model = UserNeighbor(cluster_limit_num, neighbor_top_n, neighbor_limit)
+    d = neighbor_model.generate_users_neighbors()
