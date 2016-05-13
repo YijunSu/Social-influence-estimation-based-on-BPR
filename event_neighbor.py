@@ -2,11 +2,12 @@ from math import *
 
 
 class ItemNeighbor(object):
-    def __init__(self, loc_neighbor_num):
+    def __init__(self, loc_neighbor_num, n_limit):
         self.items_neighbors = {}
         # item_neighbors is a dict and its key is the id of the event
         # its value is a set of the neighbors of the event
         self.top_n = loc_neighbor_num
+        self.neighbor_limit = n_limit
 
     def get_neighbors(self):
         items_neighbors_on_cat = {}
@@ -63,15 +64,17 @@ class ItemNeighbor(object):
                 (items_neighbors_on_loc[item[0]] & items_neighbors_on_org[item[0]]) |\
                 (items_neighbors_on_org[item[0]] & items_neighbors_on_cat[item[0]])
             v_id_set = set()
+            counter = 0
             for elem in item_neighbor_set:
-                v_id = event_id_dict[elem]
-                v_id_set.add(v_id)
+                if counter < self.neighbor_limit:
+                    v_id_set.add(event_id_dict[elem])
             self.items_neighbors[event_id_dict[item[0]]] = v_id_set
         return self.items_neighbors
 
 if __name__ == '__main__':
     top_n = 100
-    n = ItemNeighbor(top_n)
+    neighbor_num_limit = 10
+    n = ItemNeighbor(top_n, neighbor_num_limit)
     items_neighbors = n.get_neighbors()
     none_neighbor_num = 0
     for key in items_neighbors:
