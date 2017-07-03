@@ -1,12 +1,27 @@
-"""
-Bayesian Personalized Ranking with Neighbor
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
 
-Matrix Factorization model and a variety of classes
-implementing different sampling strategies.
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
-Original data is a csr_matrix of <user, item>
-After training the data we get user_factors(W) and item_factors(H)
 """
+===============================================================================
+@author:    赵明星
+@date:      2016-07-08
+@desc:      实现BPR算法，融入了user和event的近邻信息。
+
+            Bayesian Personalized Ranking with Neighbor
+            
+            Matrix Factorization model and a variety of classes
+                implementing different sampling strategies.
+            
+            Original data is a csr_matrix of <user, item>
+            After training the data we get user_factors(W) and item_factors(H)
+
+===============================================================================
+"""
+
 
 import numpy as np
 from math import log, exp

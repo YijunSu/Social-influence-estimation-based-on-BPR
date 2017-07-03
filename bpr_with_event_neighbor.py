@@ -1,11 +1,26 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 """
-Bayesian Personalized Ranking with Neighbor
+===============================================================================
+@author:    赵明星
+@date:      2016-07-08
+@desc:      实现BPR算法，融入了event和user的近邻信息。
 
-Matrix Factorization model and a variety of classes
-implementing different sampling strategies.
+            Bayesian Personalized Ranking with Neighbor
 
-Original data is a csr_matrix of <user, item>
-After training the data we get user_factors(W) and item_factors(H)
+            Matrix Factorization model and a variety of classes
+                implementing different sampling strategies.
+
+            Original data is a csr_matrix of <user, item>
+            After training the data we get user_factors(W) and item_factors(H)
+
+===============================================================================
 """
 
 import numpy as np
@@ -71,7 +86,7 @@ class BPR(object):
         print 'initial loss = {0}'.format(self.loss())
 
         # TODO: Update factors(W and H) and show negative BPR-OPT during each iteration
-        # TODO: Show negative BPR-OPT to make sure that we are minimizing it
+        #       Show negative BPR-OPT to make sure that we are minimizing it
         for it in xrange(iters_num):
             self.iter_num_x.append(it)
             print 'starting iteration {0}'.format(it)
@@ -250,6 +265,8 @@ class UniformUserUniformItem(Sampler):
         for _ in xrange(self.num_samples(self.data.nnz)):
             # TODO: choose a user randomly
             u = self.uniform_user()
+            print self.data
+            print "-" * 100
             i = random.choice(self.data[u].indices)
             # TODO: sample negative item
             j = self.sample_negative_item(self.data[u].indices)
@@ -278,6 +295,7 @@ class UniformPairWithoutReplacement(Sampler):
             j = self.sample_negative_item(self.data[u].indices)
             self.idx += 1
             yield u, i, j
+
 
 if __name__ == '__main__':
     # TODO: generate data

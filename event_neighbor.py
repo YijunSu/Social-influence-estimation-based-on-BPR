@@ -1,4 +1,7 @@
+# coding=utf-8
+
 from math import *
+import tid_vid_dict_generator as dict_generator
 
 
 class ItemNeighbor(object):
@@ -13,9 +16,9 @@ class ItemNeighbor(object):
         items_neighbors_on_cat = {}
         items_neighbors_on_loc = {}
         items_neighbors_on_org = {}
+
         event_list = []
-        m = 1
-        with open('event_info.txt') as f:
+        with open('event_info_after_washing.txt') as f:
             # TODO: find the neighbors of each item and store the info in the dict
             for line in f:
                 event_data = line.split()
@@ -24,14 +27,10 @@ class ItemNeighbor(object):
                 event_data[3] = float(event_data[3])
                 event_data[4] = int(event_data[4])
                 event_list.append(event_data)
+        f.close()
 
+        event_id_dict = dict_generator.generate_event_id_dict()
         for item in event_list:
-            event_id_dict = {}
-            with open('event_file.txt') as ef:
-                for e_line in ef:
-                    e_result = e_line.split()
-                    event_id_dict[int(e_result[0])] = int(e_result[1])
-            m += 1
             items_neighbors_on_cat[item[0]] = set()
             items_neighbors_on_org[item[0]] = set()
             items_neighbors_on_loc[item[0]] = set()
@@ -42,33 +41,37 @@ class ItemNeighbor(object):
                         items_neighbors_on_cat[item[0]].add(i[0])
                     if i[4] == item[4]:
                         items_neighbors_on_org[item[0]].add(i[0])
-                    """ TODO: calculate the distance through longitude and latitude
+
+                    """
+                    TODO: calculate the distance through longitude and latitude
                     store the distance data for sort to find the top-N neighbors
                     """
                     m_lat_a = 90.0 - item[2]
                     m_lat_b = 90.0 - i[2]
                     m_lon_a = item[3]
                     m_lon_b = i[3]
+                    # print(m_lat_b)
                     if m_lat_a == m_lat_b and m_lon_a == m_lon_b:
                         loc_similarity[i[0]] = 1
                     else:
-                        loc_similarity[i[0]] = exp(-0.5 * pow((pi * 6371004 *
+                        loc_similarity[i[0]] = exp(-0.5 * pow((pi * 6371.004 *
                                                                acos(sin(m_lat_a) * sin(m_lat_b) *
                                                                     cos(m_lon_a - m_lon_b) + cos(m_lat_a) *
                                                                     cos(m_lat_b))/180), 2.0))
-            sorted_loc_similarity_list = sorted(loc_similarity.iteritems(), key=lambda d: d[1], reverse=True)
+            sorted_loc_similarity_list = sorted(loc_similarity.items(), key=lambda d: d[1], reverse=True)
             for i in range(self.top_n):
-                items_neighbors_on_loc[item[0]].add(sorted_loc_similarity_list[i][1])
+                items_neighbors_on_loc[item[0]].add(sorted_loc_similarity_list[i][0])
 
-            item_neighbor_set = (items_neighbors_on_cat[item[0]] & items_neighbors_on_loc[item[0]]) |\
-                (items_neighbors_on_loc[item[0]] & items_neighbors_on_org[item[0]]) |\
-                (items_neighbors_on_org[item[0]] & items_neighbors_on_cat[item[0]])
+            # print(items_neighbors_on_loc[item[0]])
+            item_neighbor_set = (items_neighbors_on_loc[item[0]] & items_neighbors_on_cat[item[0]]) | \
+                                (items_neighbors_on_loc[item[0]] & items_neighbors_on_org[item[0]]) | \
+                                (items_neighbors_on_org[item[0]] & items_neighbors_on_cat[item[0]])
             v_id_set = set()
             counter = 0
             for elem in item_neighbor_set:
                 if counter < self.neighbor_limit:
-                    v_id_set.add(event_id_dict[elem])
-            self.items_neighbors[event_id_dict[item[0]]] = v_id_set
+                    v_id_set.add(event_id_dict[str(elem)])
+            self.items_neighbors[event_id_dict[str(item[0])]] = v_id_set
         return self.items_neighbors
 
 if __name__ == '__main__':
@@ -76,8 +79,11 @@ if __name__ == '__main__':
     neighbor_num_limit = 10
     n = ItemNeighbor(top_n, neighbor_num_limit)
     items_neighbors = n.get_neighbors()
+    # print(items_neighbors)
+    '''
     none_neighbor_num = 0
     for key in items_neighbors:
         if len(items_neighbors[key]) == 0:
             none_neighbor_num += 1
     print(none_neighbor_num)
+    '''

@@ -1,3 +1,18 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+"""
+===============================================================================
+author: 赵明星
+desc:   保存event真实id到数字id的映射。
+===============================================================================
+"""
+
+
 class UniformEventFile(object):
     def __init__(self):
         self.event_list = []

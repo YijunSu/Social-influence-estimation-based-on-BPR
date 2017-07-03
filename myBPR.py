@@ -1,11 +1,21 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 """
-Bayesian Personalized Ranking
-
-Matrix Factorization model and a variety of classes
-implementing different sampling strategies.
-
-Original data is a matrix of <user, item>
-After training the data we get user_factors(W) and item_factors(H)
+===============================================================================
+author: 赵明星
+desc:   BPR代码实现。
+        Bayesian Personalized Ranking
+        Matrix Factorization model and a variety of classes
+        implementing different sampling strategies.
+        
+        Original data is a matrix of <user, item>
+        After training the data we get user_factors(W) and item_factors(H)
+===============================================================================
 """
 
 import numpy as np

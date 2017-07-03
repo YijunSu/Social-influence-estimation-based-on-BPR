@@ -1,3 +1,17 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+"""
+===============================================================================
+author: 赵明星
+desc:   连接数据库，并将需要的数据从数据库中提取出来。
+===============================================================================
+"""
+
 import pymysql as mdb
 
 
@@ -8,6 +22,14 @@ class GenerateFile(object):
 
     def get_data_from_sql(self):
         # TODO: get data we need from mysql server
+
+        host = "127.0.1"
+        port = 3306
+        user = "root"
+        passwd = "123456"
+        db = "event"
+        # 使用该代码时请注意修改以上一个字段，以及后面的sql查询语句。
+
         con = mdb.connect(host, port, user, passwd, db)
         cur = con.cursor()
         sql = """
